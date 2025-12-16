@@ -47,6 +47,7 @@ jobs:
         id: version
         run: |
           MANIFEST=$(curl -s https://piston-meta.mojang.com/mc/game/version_manifest_v2.json)
+          echo "$MANIFEST"
 
           if [ -n "${{ inputs.version }}" ]; then
             VERSION_ID="${{ inputs.version }}"
