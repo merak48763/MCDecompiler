@@ -124,7 +124,7 @@ jobs:
           fi
 
       - name: Push decompiled files
-        if: ${{ inputs.commit && steps.commit.outputs.push == "true" }}
+        if: ${{ inputs.commit && steps.commit.outputs.push == 'true' }}
         uses: ad-m/github-push-action@master
         with:
           repository: ${{ secrets.REPOSITORY }}
@@ -135,7 +135,7 @@ jobs:
           tags: true
 
       - name: Send Discord notification (Commit)
-        if: ${{ inputs.commit && steps.commit.outputs.push == "true" }}
+        if: ${{ inputs.commit && steps.commit.outputs.push == 'true' }}
         uses: tsickert/discord-webhook@v7.0.0
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
