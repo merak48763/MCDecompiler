@@ -1,0 +1,153 @@
+name: Decompile Minecraft
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version ID (leave empty for latest)
+        type: string
+      commit:
+        description: Commit and push changes
+        type: boolean
+        required: true
+        default: true
+  workflow_call:
+    inputs:
+      version:
+        description: Version ID
+        type: string
+        required: true
+      commit:
+        description: Commit and push changes
+        type: boolean
+        required: true
+        default: true
+
+jobs:
+  decompile:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ secrets.REPOSITORY }}
+          ssh-key: ${{ secrets.DEPLOY_PRIVATE_KEY }}
+          ref: main
+          path: write
+
+      - name: Setup Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: !!str 25
+
+      - name: Get version info
+        id: version
+        run: |
+          MANIFEST=$(curl -s https://piston-meta.mojang.com/mc/game/version_manifest_v2.json)
+
+          if [ -n "${{ inputs.version }}" ]; then
+            VERSION_ID="${{ inputs.version }}"
+            VERSION_URL=$(echo "$MANIFEST" | jq -r --arg v "$VERSION_ID" '.versions[] | select(.id == $v) | .url')
+          else
+            VERSION_ID=$(echo "$MANIFEST" | jq -r '.versions[0].id')
+            VERSION_URL=$(echo "$MANIFEST" | jq -r '.versions[0].url')
+          fi
+
+          if [ -z "$VERSION_URL" ] || [ "$VERSION_URL" == "null" ]; then
+            echo "Error: Version $VERSION_ID not found"
+            exit 1
+          fi
+
+          VERSION_DATA=(curl -s "$VERSION_URL")
+
+          CLIENT_URL=$(echo "$VERSION_DATA" | jq -r '.downloads.client.url')
+          SERVER_URL=$(echo "$VERSION_DATA" | jq -r '.downloads.server.url')
+
+          echo "version_id=$VERSION_ID" >> $GITHUB_OUTPUT
+          echo "client_url=$CLIENT_URL" >> $GITHUB_OUTPUT
+          echo "server_url=$SERVER_URL" >> $GITHUB_OUTPUT
+          echo "Found version: $VERSION_ID"
+          echo "Client URL: $CLIENT_URL"
+
+      - name: Download Vineflower
+        run: |
+          wget -O vineflower.jar https://github.com/Vineflower/vineflower/releases/download/1.11.1/vineflower-1.11.1.jar
+
+      - name: Download client JAR
+        run: |
+          wget -O minecraft.jar "${{ steps.version.outputs.client_url }}"
+          ls -lh minecraft.jar
+
+      - name: Decompile
+        run: |
+          java -Xmx8G -jar vineflower.jar minecraft.jar decompiled/
+          JAVA_COUNT=$(find decompiled -name "*.java" | wc -l)
+          echo "Decompiled $JAVA_COUNT Java files"
+
+          if [ $JAVA_COUNT -lt 100 ]; then
+            echo "Error: Too few Java files decompiled"
+            exit 1
+          fi
+
+      # TODO: resource files
+
+      - name: Update repository
+        run: |
+          cd write
+          git rm -rf .
+          git restore --staged --worktree README.md
+          mv ../decompiled/* .
+          cd ..
+
+      - name: Commit decompiled files
+        id: commit
+        if: ${{ inputs.commit }}
+        run: |
+          cd write
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m ${{ steps.version.outputs.version_id }}
+
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+            echo "push=false" >> $GITHUB_OUTPUT
+          else
+            git commit -m "${{ steps.version.outputs.version_id }}"
+            git tag ${{ steps.version.outputs.version_id }}
+            echo "full_hash=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+            echo "short_hash=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+            echo "push=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Push decompiled files
+        if: ${{ inputs.commit && steps.commit.outputs.push == "true" }}
+        uses: ad-m/github-push-action@master
+        with:
+          repository: ${{ secrets.REPOSITORY }}
+          ssh: true
+          # TODO: april fool version should belong to its own branch
+          branch: main
+          directory: write
+          tags: true
+
+      - name: Send Discord notification (Commit)
+        if: ${{ inputs.commit && steps.commit.outputs.push == "true" }}
+        uses: tsickert/discord-webhook@v7.0.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          embed-title: Decompiled a new Minecraft version
+          embed-description: |
+            [`${{ steps.commit.outputs.short_hash }}`](https://github.com/${{ secrets.REPOSITORY }}/commit/${{ steps.commit.outputs.full_hash }}) - **${{ steps.version.outputs.version_id }}**
+
+      - name: Send Discord notification (Dry run)
+        if: ${{ !inputs.commit }}
+        uses: tsickert/discord-webhook@v7.0.0
+        with:
+          webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          embed-title: Decompiled a new Minecraft version
+          embed-description: |
+            **${{ steps.version.outputs.version_id }}**
