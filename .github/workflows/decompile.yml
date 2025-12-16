@@ -92,7 +92,21 @@ jobs:
             exit 1
           fi
 
-      # TODO: resource files
+      - name: Resource files
+        run: |
+          mkdir resources
+          unzip -q -o minecraft.jar -x '*.class' -d resources
+          cd resources
+          while IFS= read -r i; do
+            sha1=$(sha1sum "$i" | awk '{print $1}')
+            printf '%s %s\n' "$i" "$sha1" >> png-list.txt
+            rm -- "$i"
+          done < <(find . -name "*.png" -type f)
+          while IFS= read -r i; do
+            rm -- "$i"
+          done < <(find . -name "*.zip" -type f)
+          ls
+          cd ..
 
       - name: Update repository
         run: |
@@ -100,6 +114,7 @@ jobs:
           git rm -rf .
           git restore --staged --worktree README.md
           mv ../decompiled/* .
+          ls
           cd ..
 
       - name: Commit decompiled files
