@@ -46,15 +46,14 @@ jobs:
       - name: Get version info
         id: version
         run: |
-          MANIFEST=$(curl -s https://piston-meta.mojang.com/mc/game/version_manifest_v2.json)
-          echo "$MANIFEST"
+          wget https://piston-meta.mojang.com/mc/game/version_manifest_v2.json
 
           if [ -n "${{ inputs.version }}" ]; then
             VERSION_ID="${{ inputs.version }}"
-            VERSION_URL=$(echo "$MANIFEST" | jq -r --arg v "$VERSION_ID" '.versions[] | select(.id == $v) | .url')
+            VERSION_URL=$(jq -r --arg v "$VERSION_ID" '.versions[] | select(.id == $v) | .url' version_manifest_v2.json)
           else
-            VERSION_ID=$(echo "$MANIFEST" | jq -r '.versions[0].id')
-            VERSION_URL=$(echo "$MANIFEST" | jq -r '.versions[0].url')
+            VERSION_ID=$(jq -r '.versions[0].id' version_manifest_v2.json)
+            VERSION_URL=$(jq -r '.versions[0].url' version_manifest_v2.json)
           fi
 
           if [ -z "$VERSION_URL" ] || [ "$VERSION_URL" == "null" ]; then
@@ -62,10 +61,10 @@ jobs:
             exit 1
           fi
 
-          VERSION_DATA=(curl -s "$VERSION_URL")
+          wget -O versionData.json "$VERSION_URL"
 
-          CLIENT_URL=$(echo "$VERSION_DATA" | jq -r '.downloads.client.url')
-          SERVER_URL=$(echo "$VERSION_DATA" | jq -r '.downloads.server.url')
+          CLIENT_URL=$(jq -r '.downloads.client.url' versionData.json)
+          SERVER_URL=$(jq -r '.downloads.server.url' versionData.json)
 
           echo "version_id=$VERSION_ID" >> $GITHUB_OUTPUT
           echo "client_url=$CLIENT_URL" >> $GITHUB_OUTPUT
