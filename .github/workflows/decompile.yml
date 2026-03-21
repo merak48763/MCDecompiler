@@ -163,15 +163,18 @@ jobs:
         uses: tsickert/discord-webhook@v7.0.0
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          embed-title: Decompiled a new Minecraft version
+          content: Decompiled a new Minecraft version
+          embed-title: |
+            ${{ steps.version.outputs.version_id }}
           embed-description: |
-            [`${{ steps.commit.outputs.short_hash }}`](https://github.com/${{ secrets.REPOSITORY }}/commit/${{ steps.commit.outputs.full_hash }}) - **${{ steps.version.outputs.version_id }}**
+            [`${{ steps.commit.outputs.short_hash }}`](https://github.com/${{ secrets.REPOSITORY }}/commit/${{ steps.commit.outputs.full_hash }})
 
       - name: Send Discord notification (Dry run)
         if: ${{ !inputs.commit }}
         uses: tsickert/discord-webhook@v7.0.0
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          embed-title: Decompiled a new Minecraft version
-          embed-description: |
-            **${{ steps.version.outputs.version_id }}**
+          content: Decompiled a new Minecraft version
+          embed-title: |
+            ${{ steps.version.outputs.version_id }}
+          embed-description: This is a dry run
