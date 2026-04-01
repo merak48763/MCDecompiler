@@ -69,6 +69,7 @@ jobs:
           if [[ -n "${{ inputs.base_version }}" ]]; then
             echo "Making a branch from ${{ inputs.base_version }}"
             cd write
+            git fetch --all --tags
             git checkout -b "fork/$VERSION_ID" ${{ inputs.base_version }}
             cd ..
             echo "branch=fork/$VERSION_ID" >> $GITHUB_OUTPUT
