@@ -11,6 +11,9 @@ on:
         type: boolean
         required: true
         default: true
+      base_version:
+        description: Make a branch based on this version ID (leave empty for no branching)
+        type: string
   workflow_call:
     inputs:
       version:
@@ -22,6 +25,8 @@ on:
         type: boolean
         required: true
         default: true
+      base_version:
+        type: string
 
 jobs:
   decompile:
@@ -48,7 +53,7 @@ jobs:
         run: |
           wget https://piston-meta.mojang.com/mc/game/version_manifest_v2.json
 
-          if [ -n "${{ inputs.version }}" ]; then
+          if [[ -n "${{ inputs.version }}" ]]; then
             VERSION_ID="${{ inputs.version }}"
             VERSION_URL=$(jq -r --arg v "$VERSION_ID" '.versions[] | select(.id == $v) | .url' version_manifest_v2.json)
           else
@@ -56,9 +61,17 @@ jobs:
             VERSION_URL=$(jq -r '.versions[0].url' version_manifest_v2.json)
           fi
 
-          if [ -z "$VERSION_URL" ] || [ "$VERSION_URL" == "null" ]; then
+          if [[ -z "$VERSION_URL" || "$VERSION_URL" == "null" ]]; then
             echo "Error: Version $VERSION_ID not found"
             exit 1
+          fi
+
+          if [[ -n "${{ inputs.base_version }}" ]]; then
+            echo "Making a branch from ${{ inputs.base_version }}"
+            git checkout -b "fork/$VERSION_ID" ${{ inputs.base_version }}
+            echo "branch=fork/$VERSION_ID" >> $GITHUB_OUTPUT
+          else
+            echo "branch=main" >> $GITHUB_OUTPUT
           fi
 
           wget -O versionData.json "$VERSION_URL"
@@ -87,7 +100,7 @@ jobs:
           JAVA_COUNT=$(find decompiled -name "*.java" | wc -l)
           echo "Decompiled $JAVA_COUNT Java files"
 
-          if [ $JAVA_COUNT -lt 100 ]; then
+          if [[ $JAVA_COUNT -lt 100 ]]; then
             echo "Error: Too few Java files decompiled"
             exit 1
           fi
@@ -153,8 +166,7 @@ jobs:
         with:
           repository: ${{ secrets.REPOSITORY }}
           ssh: true
-          # TODO: april fool version should belong to its own branch
-          branch: main
+          branch: ${{ steps.version.outputs.branch }}
           directory: write
           tags: true
 
