@@ -11,8 +11,8 @@ on:
         type: boolean
         required: true
         default: true
-      base_version:
-        description: Make a branch based on this version ID (leave empty for no branching)
+      commit_to:
+        description: The branch to commit to (leave empty for main; the "fork/" prefix is automatically added)
         type: string
   workflow_call:
     inputs:
@@ -25,7 +25,7 @@ on:
         type: boolean
         required: true
         default: true
-      base_version:
+      commit_to:
         type: string
 
 jobs:
@@ -66,13 +66,13 @@ jobs:
             exit 1
           fi
 
-          if [[ -n "${{ inputs.base_version }}" ]]; then
-            echo "Making a branch from ${{ inputs.base_version }}"
+          if [[ -n "${{ inputs.commit_to }}" ]]; then
+            echo "Switching to branch fork/${{ inputs.commit_to }}"
             cd write
-            git fetch --all --tags
-            git checkout -b "fork/$VERSION_ID" ${{ inputs.base_version }}
+            git fetch --all
+            git checkout "fork/${{ inputs.commit_to }}""
             cd ..
-            echo "branch=fork/$VERSION_ID" >> $GITHUB_OUTPUT
+            echo "branch=fork/${{ inputs.commit_to }}" >> $GITHUB_OUTPUT
           else
             echo "branch=main" >> $GITHUB_OUTPUT
           fi
@@ -182,7 +182,8 @@ jobs:
           embed-title: |
             ${{ steps.version.outputs.version_id }}
           embed-description: |
-            [`${{ steps.commit.outputs.short_hash }}`](https://github.com/${{ secrets.REPOSITORY }}/commit/${{ steps.commit.outputs.full_hash }})
+            Commit: [`${{ steps.commit.outputs.short_hash }}`](https://github.com/${{ secrets.REPOSITORY }}/commit/${{ steps.commit.outputs.full_hash }})
+            Branch: `${{ steps.version.outputs.branch }}`
 
       - name: Send Discord notification (Dry run)
         if: ${{ !inputs.commit }}
