@@ -70,7 +70,7 @@ jobs:
             echo "Switching to branch fork/${{ inputs.commit_to }}"
             cd write
             git fetch --all
-            git checkout "fork/${{ inputs.commit_to }}""
+            git checkout "fork/${{ inputs.commit_to }}"
             cd ..
             echo "branch=fork/${{ inputs.commit_to }}" >> $GITHUB_OUTPUT
           else
