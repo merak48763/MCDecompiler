@@ -1,0 +1,42 @@
+name: Create Out-of-Order Version Branch
+
+on:
+  workflow_dispatch:
+    inputs:
+      base_version:
+        description: The base version ID
+        type: string
+      branch_name:
+        description: The branching version ID
+        type: string
+
+jobs:
+  create_branch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          repository: ${{ secrets.REPOSITORY }}
+          ssh-key: ${{ secrets.DEPLOY_PRIVATE_KEY }}
+          ref: main
+          path: write
+
+      - name: Create branch
+        id: branching
+        run: |
+          cd wirte
+          git fetch --all --tags
+          git checkout -b "fork/$VERSION_ID" ${{ inputs.base_version }}
+          cd ..
+          echo "branch=fork/$VERSION_ID" >> $GITHUB_OUTPUT
+
+      - name: Push branch
+        uses: ad-m/github-push-action@master
+        with:
+          repository: ${{ secrets.REPOSITORY }}
+          ssh: true
+          branch: ${{ steps.branching.outputs.branch }}
+          directory: write
