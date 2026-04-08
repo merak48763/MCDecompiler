@@ -27,7 +27,7 @@ jobs:
       - name: Create branch
         id: branching
         run: |
-          cd wirte
+          cd write
           git fetch --all --tags
           git checkout -b "fork/$VERSION_ID" ${{ inputs.base_version }}
           cd ..
