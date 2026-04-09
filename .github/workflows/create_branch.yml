@@ -7,7 +7,7 @@ on:
         description: The base version ID
         type: string
       branch_name:
-        description: The branching version ID
+        description: Name of the new branch
         type: string
 
 jobs:
@@ -29,9 +29,9 @@ jobs:
         run: |
           cd write
           git fetch --all --tags
-          git checkout -b "fork/${{ inputs.branch_name }}" ${{ inputs.base_version }}
+          git checkout -b "${{ inputs.branch_name }}" ${{ inputs.base_version }}
           cd ..
-          echo "branch=fork/${{ inputs.branch_name }}" >> $GITHUB_OUTPUT
+          echo "branch=${{ inputs.branch_name }}" >> $GITHUB_OUTPUT
 
       - name: Push branch
         uses: ad-m/github-push-action@master

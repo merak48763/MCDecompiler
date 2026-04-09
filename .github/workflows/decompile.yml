@@ -12,7 +12,7 @@ on:
         required: true
         default: true
       commit_to:
-        description: The branch to commit to (leave empty for main; the "fork/" prefix is automatically added)
+        description: The branch to commit to (leave empty for main)
         type: string
   workflow_call:
     inputs:
@@ -67,12 +67,12 @@ jobs:
           fi
 
           if [[ -n "${{ inputs.commit_to }}" ]]; then
-            echo "Switching to branch fork/${{ inputs.commit_to }}"
+            echo "Switching to branch ${{ inputs.commit_to }}"
             cd write
             git fetch --all
-            git checkout "fork/${{ inputs.commit_to }}"
+            git checkout "${{ inputs.commit_to }}"
             cd ..
-            echo "branch=fork/${{ inputs.commit_to }}" >> $GITHUB_OUTPUT
+            echo "branch=${{ inputs.commit_to }}" >> $GITHUB_OUTPUT
           else
             echo "branch=main" >> $GITHUB_OUTPUT
           fi
