@@ -6,27 +6,10 @@ on:
       version:
         description: Version ID (leave empty for latest)
         type: string
-      commit:
-        description: Commit and push changes
-        type: boolean
-        required: true
-        default: true
       commit_to:
-        description: The branch to commit to (leave empty for main)
+        description: The branch to commit to (leave empty for dry run)
         type: string
-  workflow_call:
-    inputs:
-      version:
-        description: Version ID
-        type: string
-        required: true
-      commit:
-        description: Commit and push changes
-        type: boolean
-        required: true
-        default: true
-      commit_to:
-        type: string
+        default: main
 
 jobs:
   decompile:
@@ -66,15 +49,19 @@ jobs:
             exit 1
           fi
 
-          if [[ -n "${{ inputs.commit_to }}" ]]; then
+          if [[ -z "${{ inputs.commit_to }}" ]]; then
+            echo "commit=false" >> $GITHUB_OUTPUT
+          elif [[ "${{ inputs.commit_to }}" == "main" ]]; then
+            echo "branch=main" >> $GITHUB_OUTPUT
+            echo "commit=true" >> $GITHUB_OUTPUT
+          else
             echo "Switching to branch ${{ inputs.commit_to }}"
             cd write
             git fetch --all
             git checkout "${{ inputs.commit_to }}"
             cd ..
             echo "branch=${{ inputs.commit_to }}" >> $GITHUB_OUTPUT
-          else
-            echo "branch=main" >> $GITHUB_OUTPUT
+            echo "commit=true" >> $GITHUB_OUTPUT
           fi
 
           wget -O versionData.json "$VERSION_URL"
@@ -145,7 +132,7 @@ jobs:
 
       - name: Commit decompiled files
         id: commit
-        if: ${{ inputs.commit }}
+        if: ${{ steps.version.outputs.commit == 'true' }}
         run: |
           cd write
           git config user.name "github-actions[bot]"
@@ -164,7 +151,7 @@ jobs:
           fi
 
       - name: Push decompiled files
-        if: ${{ inputs.commit && steps.commit.outputs.push == 'true' }}
+        if: ${{ steps.version.outputs.commit == 'true' && steps.commit.outputs.push == 'true' }}
         uses: ad-m/github-push-action@master
         with:
           repository: ${{ secrets.REPOSITORY }}
@@ -174,7 +161,7 @@ jobs:
           tags: true
 
       - name: Send Discord notification (Commit)
-        if: ${{ inputs.commit && steps.commit.outputs.push == 'true' }}
+        if: ${{ steps.version.outputs.commit == 'true' && steps.commit.outputs.push == 'true' }}
         uses: tsickert/discord-webhook@v7.0.0
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
@@ -186,7 +173,7 @@ jobs:
             Branch: `${{ steps.version.outputs.branch }}`
 
       - name: Send Discord notification (Dry run)
-        if: ${{ !inputs.commit }}
+        if: ${{ steps.version.outputs.commit == 'false' }}
         uses: tsickert/discord-webhook@v7.0.0
         with:
           webhook-url: ${{ secrets.DISCORD_WEBHOOK_URL }}
