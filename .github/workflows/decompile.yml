@@ -76,7 +76,7 @@ jobs:
 
       - name: Download Vineflower
         run: |
-          wget -O vineflower.jar https://github.com/Vineflower/vineflower/releases/download/1.11.2/vineflower-1.11.2.jar
+          wget -O vineflower.jar https://github.com/Vineflower/vineflower/releases/download/1.12.0/vineflower-1.12.0.jar
 
       - name: Download client JAR
         run: |
